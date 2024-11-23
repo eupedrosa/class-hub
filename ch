@@ -220,6 +220,47 @@ function get_assignment() {
     echo "Assignment repositories updated successfully!"
 }
 
+function update() {
+    echo "Checking for updates..."
+    
+    # Define the repository and script location
+    local repo="eupedrosa/class-hub"
+    local script_path="ch"
+    local current_script="$0"
+    
+    # Get the latest version from GitHub
+    local tmp_file=$(mktemp)
+    if ! gh api "repos/$repo/contents/$script_path" --jq '.content' | base64 -d > "$tmp_file"; then
+        echo "Error: Failed to fetch the latest version"
+        rm "$tmp_file"
+        exit 1
+    }
+    
+    # Compare files
+    if cmp -s "$current_script" "$tmp_file"; then
+        echo "Already up to date!"
+        rm "$tmp_file"
+        exit 0
+    fi
+    
+    # Backup current version
+    cp "$current_script" "$current_script.backup"
+    
+    # Replace current script with new version
+    mv "$tmp_file" "$current_script"
+    chmod +x "$current_script"
+
+    # Update autocomplete file
+    local autocomplete_path="$HOME/.local/share/bash-completion/completions/ch"
+    if [ -f "$autocomplete_path" ]; then
+        echo "Updating autocomplete file..."
+        mkdir -p "$(dirname "$autocomplete_path")"
+        "$current_script" autocomplete > "$autocomplete_path"
+    fi
+    
+    echo "Successfully updated! Previous version saved as $current_script.backup"
+}
+
 function autocomplete() {
     cat << 'EOF'
 _ch_completion() {
@@ -227,7 +268,7 @@ _ch_completion() {
     _get_comp_words_by_ref -n : cur prev words cword
 
     # List of available commands
-    local commands="create-assignment list-assignments get-assignment"
+    local commands="create-assignment list-assignments get-assignment update"
 
     # Handle command-specific completions
     case ${words[1]} in
@@ -287,6 +328,11 @@ while [[ $# -gt 0 ]]; do
       get_assignment "$@"
       exit 0
       ;;
+    update)
+      shift
+      update "$@"
+      exit 0
+      ;;
     autocomplete)
       shift
       autocomplete "$@"
@@ -299,7 +345,8 @@ while [[ $# -gt 0 ]]; do
       echo "  create-assignment <classroom_name> <assignment_name> <students_file> [template_repo]"
       echo "  list-assignments <classroom_name> [assignment_name]"
       echo "  get-assignment <classroom_name> <assignment_name> [target_directory]"
-      echo "  autocomplete                     Output shell completion code"
+      echo "  update                          Update the CLI tool to the latest version"
+      echo "  autocomplete                    Output shell completion code"
       exit 0
       ;;
     *)
