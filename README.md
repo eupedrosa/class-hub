@@ -62,6 +62,7 @@ ch autocomplete > ~/.local/share/bash-completion/completions/ch
 ```bash
 ch create-assignment <classroom_name> <assignment_name> <students_file> [template_repo]
 ```
+NOTE: The lective year is automatically added to the assignment name.
 
 ### List Assignments
 ```bash
