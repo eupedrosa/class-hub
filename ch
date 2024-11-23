@@ -243,9 +243,6 @@ function update() {
         exit 0
     fi
     
-    # Backup current version
-    cp "$current_script" "$current_script.backup"
-    
     # Replace current script with new version
     mv "$tmp_file" "$current_script"
     chmod +x "$current_script"
@@ -258,7 +255,7 @@ function update() {
         "$current_script" autocomplete > "$autocomplete_path"
     fi
     
-    echo "Successfully updated! Previous version saved as $current_script.backup"
+    echo "Successfully updated!"
 }
 
 function autocomplete() {
