@@ -234,7 +234,7 @@ function update() {
         echo "Error: Failed to fetch the latest version"
         rm "$tmp_file"
         exit 1
-    }
+    fi
     
     # Compare files
     if cmp -s "$current_script" "$tmp_file"; then
