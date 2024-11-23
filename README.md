@@ -74,6 +74,12 @@ ch list-assignments <classroom_name> [assignment_name]
 ch get-assignment <classroom_name> <assignment_name> [target_directory]
 ```
 
+### Update CLI Tool
+```bash
+ch update
+```
+Updates the CLI tool to the latest version.
+
 For more information, run:
 ```bash
 ch --help
