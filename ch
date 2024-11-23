@@ -141,8 +141,10 @@ function create_assignment() {
         # Add all students in the group as collaborators
         for email in ${group_students[$group_number]}; do
             if github_user_exists "$email"; then
-                echo "  - Inviting $email to $repo_name..."
-                gh api -X PUT "repos/$classroom_name/$repo_name/collaborators/$email" -f permission=write
+                # Get the username from the email
+                username=$(gh api "search/users?q=${email}+in:email" | jq -r '.items[0].login')
+                echo "  - Inviting @$username ($email) to $repo_name..."
+                gh api -X PUT "repos/$classroom_name/$repo_name/collaborators/$username" -f permission=write >/dev/null 2>&1
             else
                 echo "  ⚠️  Warning: GitHub user '$email' not found, skipping..."
             fi
