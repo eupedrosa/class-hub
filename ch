@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # bash options
 set -e # exit on error
@@ -35,9 +35,9 @@ function get_lective_year() {
 
 # Add this helper function to check if a GitHub user exists
 function github_user_exists() {
-    local email="$1"
-    # Search for user by email using the GitHub API
-    if gh api "search/users?q=${email}+in:email" | jq -e '.total_count > 0' >/dev/null; then
+    local username="$1"
+    # Check if user exists using the GitHub API
+    if gh api "users/${username}" &>/dev/null; then
         return 0
     else
         return 1
@@ -73,19 +73,19 @@ function create_assignment() {
     local lective_year=$(get_lective_year)
 
     # First pass: collect all students by group
-    while IFS=, read -r email group_number || [ -n "$email" ]; do
+    while IFS=, read -r username group_number || [ -n "$username" ]; do
         # Skip empty lines and comments
-        [[ -z "$email" || "$email" =~ ^#.*$ ]] && continue
+        [[ -z "$username" || "$username" =~ ^#.*$ ]] && continue
         
         # Trim whitespace
-        email=$(echo "$email" | xargs)
-        group_number=$(echo "$group_number" | xargs)
-        
-        # Append student email to group array
+        username=$(echo "$username" | xargs)
+        group_number=$(echo "$group_number" | xargs | tr -d '\r')
+
+        # Append student username to group array
         if [ -z "${group_students[$group_number]:-}" ]; then
-            group_students[$group_number]="$email"
+            group_students[$group_number]="$username"
         else
-            group_students[$group_number]="${group_students[$group_number]} $email"
+            group_students[$group_number]="${group_students[$group_number]} $username"
         fi
     done < "$students_file"
 
@@ -97,15 +97,15 @@ function create_assignment() {
     
     # Display groups in sorted order
     for group_number in "${sorted_groups[@]}"; do
+        echo "${lective_year}-${assignment_name}-group${group_number}"
         repo_name="${lective_year}-${assignment_name}-group$(printf "%02d" "$group_number")"
         echo -e "\n  Repository: $classroom_name/$repo_name"
         echo "  Students:"
-        for email in ${group_students[$group_number]}; do
-            username=$(gh api "search/users?q=${email}+in:email" | jq -r '.items[0].login // "not found"')
-            if [ "$username" = "not found" ]; then
-                echo "    - $email (⚠️ GitHub user not found)"
+        for username in ${group_students[$group_number]}; do
+            if github_user_exists "$username"; then
+                echo "    - @$username"
             else
-                echo "    - $email (@$username)"
+                echo "    - @$username (⚠️ GitHub user not found)"
             fi
         done
     done
@@ -139,14 +139,12 @@ function create_assignment() {
         fi
 
         # Add all students in the group as collaborators
-        for email in ${group_students[$group_number]}; do
-            if github_user_exists "$email"; then
-                # Get the username from the email
-                username=$(gh api "search/users?q=${email}+in:email" | jq -r '.items[0].login')
-                echo "  - Inviting @$username ($email) to $repo_name..."
+        for username in ${group_students[$group_number]}; do
+            if github_user_exists "$username"; then
+                echo "  - Inviting @$username to $repo_name..."
                 gh api -X PUT "repos/$classroom_name/$repo_name/collaborators/$username" -f permission=write >/dev/null 2>&1
             else
-                echo "  ⚠️  Warning: GitHub user '$email' not found, skipping..."
+                echo "  ⚠️  Warning: GitHub user '@$username' not found, skipping..."
             fi
         done
     done
